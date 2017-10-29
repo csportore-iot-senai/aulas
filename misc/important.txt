@@ -1,0 +1,21 @@
+GitHub Senai
+	https://github.com/senai-sp/iot-projects
+
+Slack
+	codexp-senai
+
+Documentação do Projeto
+	https://docs.google.com/document/d/1JA5yEMUHZJZySKVP2dLOXM2j-9UgPN-7BDDppO4K-Mk/edit?usp=sharing
+
+
+EmailOnDeck
+	quinty.70@definingjtl.com
+		cspormqtt
+	Dados do MQTT
+		Server	m10.cloudmqtt.com
+		User	ubctjmkx  Restart
+		Password	OiQWzLIXFRpn
+		Port	16813
+		SSL Port	26813
+		Websockets Port (TLS only)	36813
+		Connection limit	10

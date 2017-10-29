@@ -2,7 +2,8 @@ unsigned int i = 0;
 int ledRedPin = 13;
 int ledYellowPin = 12;
 int ledGreenPin = 11;
-int ledPiezo = 6;
+int buzzPin = 6;
+int potentPin = A1;
 
 void setup() {
   // put your setup code here, to run once:
@@ -16,24 +17,27 @@ void setup() {
   pinMode(ledRedPin, OUTPUT);
   pinMode(ledYellowPin, OUTPUT);
   pinMode(ledGreenPin, OUTPUT);
+  pinMode(potentPin, INPUT);
 }
 
 void loop() {
-  if (Serial.available() > 0 ) {
-    int value = Serial.parseInt();
-    if (value > 50) {
-      turnOn(ledRedPin);
-      tone(6, 1000, 500);
-      //noTone(6);
-    } else if (value <= 50 && value >= 30) {
-      turnOn(ledYellowPin);
-    } else if (value < 30 && value >= 20) {
-      turnOn(ledGreenPin);
-    } else {
-      turnAllOff();
-      Serial.println(value + " nao existe!");
-    }
+  int value = analogRead(potentPin);
+  float milliVolts = map(value, 0, 1023, 0, 5000);
+  float temperatura = milliVolts / 10.0;
+  if (temperatura < 25) {
+    turnOn(ledRedPin);
+    noTone(6);
+  } else if ( temperatura < 27) {
+    turnOn(ledYellowPin);
+    noTone(6);
+  } else if (temperatura < 30) {
+    turnOn(ledGreenPin);
+    noTone(6);
+  } else {
+    turnAllOff();
+    tone(buzzPin, value);
   }
+  Serial.println(temperatura);
 }
 
 void turnOn(int pin) {

@@ -1,0 +1,10 @@
+Lampada da garagem = 	LED branco
+Portão = 		Abertura Via Aplicativo MQTT
+			2 Servos
+Campainha de alerta = 	Piezo Buzzer
+Sinalização garagem =	1 LED Vermelho
+			1 LED Amarelo
+Garagem =		Caixa de Sapatos
+Porta da garagem =	Palitos de dente ou de fosforo
+
+MQTT = http://www.dioty.co/ ou https://www.hivemq.com/try-out/
