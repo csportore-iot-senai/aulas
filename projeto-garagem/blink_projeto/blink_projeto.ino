@@ -23,14 +23,8 @@
 */
 const int YLED_PIN = 2;
 const int RLED_PIN = 4;
-
-// Variables will change:
-int ledState = LOW;             // ledState used to set the LED
-long previousMillis = 0;        // will store last time LED was updated
-
-// the follow variables is a long because the time, measured in miliseconds,
-// will quickly become a bigger number than can be stored in an int.
-long interval = 300;           // interval at which to blink (milliseconds)
+long previousMillis = 0;
+long interval = 300;
 
 void setup() {
   // set the digital pin as output:
