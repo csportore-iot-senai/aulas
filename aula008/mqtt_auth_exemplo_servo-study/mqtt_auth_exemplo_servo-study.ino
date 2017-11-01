@@ -13,19 +13,21 @@
 #include <PubSubClient.h>
 #include <Servo.h>
 
-// Atualizar ultimo valor para ID do seu Kit para evitar duplicatas
+//SERVER
 byte mac[] = { 0xAA, 0xED, 0xFF, 0xFE, 0xAF, 0x15 };
-IPAddress ip(192, 168, 3, 176);
-// Endereço do Cloud MQTT
 char* server = "m10.cloudmqtt.com";
+int port = 16813;
 
+//SERVO
 Servo myservo;
 int pos = 0;    // variable to store the servo position
 
-const int LED_PIN = 7;
-
-// Valor da porta do servidor MQTT
-int port = 16813;
+//LEDS
+const int LED_PIN = 6;
+const int YLED_PIN = 2;
+const int RLED_PIN = 3;
+long previousMillis = 0;
+long interval = 300;
 
 void whenMessageReceived(char* topic, byte* payload, unsigned int length) {
   // Converter pointer do tipo `byte` para typo `char`
@@ -35,19 +37,23 @@ void whenMessageReceived(char* topic, byte* payload, unsigned int length) {
   // Converter em tipo String para conveniência
   String msg = String(payloadAsChar);
   String topicString = String(topic);
-  Serial.print("Topic received: "); Serial.println(topic);
-  Serial.print("Message: "); Serial.println(msg);
-  if (msg == "TURN") {
+
+  Serial.print("Topic received: ");
+  Serial.println(topic);
+  Serial.print("Message: ");
+  Serial.println(msg);
+  
+  int msgCode = msg.toInt();
+
+  if (msgCode) {
     digitalWrite(LED_PIN, HIGH);
     for (pos = 0; pos <= 180; pos += 1) {
       // in steps of 1 degree
       myservo.write(pos);
-      delay(150);
     }
   } else {
     for (pos; pos >= 0; pos -= 1) {
       myservo.write(pos);
-      delay(150);
     }
     digitalWrite(LED_PIN, LOW);
   }
@@ -66,8 +72,16 @@ PubSubClient client(server, port, whenMessageReceived, ethClient);
 
 void setup()
 {
+  //LED
   pinMode(LED_PIN, OUTPUT);
+  pinMode(YLED_PIN, OUTPUT);
+  pinMode(RLED_PIN, OUTPUT);
+  digitalWrite(YLED_PIN, HIGH);
+
+  //SERVO
   myservo.attach(9);
+
+  //SERVER
   Serial.begin(9600);
   while (!Serial) {}
   Serial.println("Attempting DHCP");
@@ -91,8 +105,26 @@ void setup()
 
 void loop()
 {
-  // A biblioteca PubSubClient precisa que este método seja chamado em cada iteração de `loop()`
-  // para manter a conexão MQTT e processar mensagens recebidas (via a função callback)
+  unsigned long currentMillis = millis();
+
+  if (currentMillis - previousMillis > interval) {
+    // save the last time you blinked the LED
+    previousMillis = currentMillis;
+
+    // if the LED is off turn it on and vice-versa:
+    if (digitalRead(YLED_PIN) == LOW) {
+      turnOffAllLEDs();
+      digitalWrite(YLED_PIN, HIGH);
+    } else {
+      turnOffAllLEDs();
+      digitalWrite(RLED_PIN, HIGH);
+    }
+  }
+
   client.loop();
 }
 
+void turnOffAllLEDs() {
+  digitalWrite(RLED_PIN, LOW);
+  digitalWrite(YLED_PIN, LOW);
+}
