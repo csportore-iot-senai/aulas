@@ -1,6 +1,6 @@
 #include <SPI.h>
-#include <UIPEthernet.h>
-#include <utility/logging.h>
+#include <Ethernet.h>
+//#include <utility/logging.h>
 #include <PubSubClient.h>
 
 //=============================================================//
@@ -19,16 +19,6 @@ unsigned long blinkInterval = 20;
 //=============================================================//
 EthernetClient ethClient;
 byte mac[] = { 0xAA, 0xED, 0xFF, 0xFE, 0xAF, 0x15 };
-
-void establishEthernetConnection() {
-  Serial.println("Attempting DHCP");
-  if (!Ethernet.begin(mac)) {
-    Serial.println("DHCP Failed");
-    return false;
-  } else {
-    Serial.println(Ethernet.localIP());
-  }
-}
 
 //=============================================================//
 //========================= MQTT ==============================//
@@ -63,15 +53,21 @@ void whenMessageReceived(char* topic, byte* payload, unsigned int length) {
 
 PubSubClient mqttClient(server, port, whenMessageReceived, ethClient);
 
-bool establishMQTTConnection() {
-  Serial.println("Connecting...");
-  //boolean PubSubClient::connect(const char *id, const char *user, const char *pass, const char* willTopic, uint8_t willQos, boolean willRetain, const char* willMessage)
-  if (mqttClient.connect(device_id, user, password, willTopicName, willTopicQos, willTopicRetain, willTopicMessage)) {
-    Serial.println("Connected");
-    return true;
+void establishConnection() {
+  Serial.println("Attempting DHCP");
+  if (Ethernet.begin(mac) == 0) {
+    Serial.println("DHCP Failed");
   } else {
-    Serial.println("Failed to connect to MQTT server");
-    return false;
+    Serial.println(Ethernet.localIP());
+    Serial.println("Address obtained!");
+    // MQTT Connection
+    Serial.println("Connecting...");
+    //boolean PubSubClient::connect(const char *id, const char *user, const char *pass, const char* willTopic, uint8_t willQos, boolean willRetain, const char* willMessage)
+    if (mqttClient.connect(device_id, user, password, willTopicName, willTopicQos, willTopicRetain, willTopicMessage)) {
+      Serial.println("Connected");
+    } else {
+      Serial.println("Failed to connect to MQTT server");
+    }
   }
 }
 
@@ -90,40 +86,33 @@ void subscribeToMQTTTopic(char* topic) {
 void setup() {
   Serial.begin(9600);
   while (!Serial) {}
-  establishEthernetConnection();
+  establishConnection();
   pinMode(GREEN_LED_PIN, OUTPUT);
   pinMode(YELLOW_LED_PIN, OUTPUT);
 }
 
 void loop() {
-  if (ethClient.available()) {
-    if (ethClient.connected()) {
-      char c = ethClient.read();
-      Serial.println(c);
-      turnOnLED(GREEN_LED_PIN);
-      if (mqttClient.connected()) {
-        turnOnLED(YELLOW_LED_PIN);
-        publishMQTTMessage(writeToTopic);
-        subscribeToMQTTTopic(readFromTopic);
-        mqttClient.loop();
-      } else {
-        establishMQTTConnection();
+  if (mqttClient.connected()) {
+    turnOnLED(GREEN_LED_PIN);
+    if (Serial.available()) {
+      int command = Serial.parseInt();
+      switch (command) {
+        case 1:
+          publishMQTTMessage(writeToTopic);
+          break;
+        default:
+          subscribeToMQTTTopic(readFromTopic);
       }
+      mqttClient.loop();
     }
   } else {
+    Serial.println("There's no connection, mate. Type \"retry\" and good luck!");
     turnOffAllLEDs();
-    Serial.println("There's no internet connection, mate. Type \"retry\" and good luck!");
     String serialMessage = "";
     while (serialMessage != "retry") {
       serialMessage = Serial.readString();
-    };
-    establishEthernetConnection();
-  }
-
-  if (isReceivingMessage) {
-    blinkLED(YELLOW_LED_PIN);
-  } else {
-    resumeLEDState(YELLOW_LED_PIN, lastStateYellowPin);
+    }
+    establishConnection();
   }
 }
 
