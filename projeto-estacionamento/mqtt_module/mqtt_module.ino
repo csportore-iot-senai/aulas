@@ -30,7 +30,7 @@ const char device_id[] = {"ACG-IoT"};
 const char user[] = {"admin"};
 const char password[] = {"admin"};
 const char willTopicName[] = {"will-topic"};
-const char willTopicMessage[] = {String(device_id).concat(" is offline")};
+const char willTopicMessage[] = {" device is offline"};
 const unsigned int willTopicQos = 0;
 const boolean willTopicRetain = false;
 const char writeToTopic[] = "outTopic";
@@ -39,48 +39,94 @@ bool isMQTTConnected = false;
 bool isReceivingMessage = false;
 
 void whenMessageReceived(char* topic, byte* payload, unsigned int length) {
-  isReceivingMessage = true;
   payload[length] = 0;
   char* payloadAsChar = payload;
+
   // Converter em tipo String para conveniência
   String msg = String(payloadAsChar);
   String topicString = String(topic);
-  Serial.print("Topic received: "); Serial.println(topic);
-  Serial.print("Message: "); Serial.println(msg);
-  int msgComoNumero = msg.toInt();
+
+  Serial.print("Topic received: ");
+  Serial.println(topic);
+  Serial.print("Message: ");
+  Serial.println(msg);
+
+  int msgCode = msg.toInt();
+
+  Serial.print("Numero lido: "); Serial.println(msgCode);
   Serial.flush();
 }
 
 PubSubClient mqttClient(server, port, whenMessageReceived, ethClient);
 
 void establishConnection() {
-  Serial.println("Attempting DHCP");
+  Serial.print("Attempting DHCP");
   if (Ethernet.begin(mac) == 0) {
-    Serial.println("DHCP Failed");
+    Serial.println("...but it failed miserably");
   } else {
-    Serial.println(Ethernet.localIP());
-    Serial.println("Address obtained!");
+    Serial.print(" with "); Serial.println(Ethernet.localIP());
     // MQTT Connection
     Serial.println("Connecting...");
     //boolean PubSubClient::connect(const char *id, const char *user, const char *pass, const char* willTopic, uint8_t willQos, boolean willRetain, const char* willMessage)
     if (mqttClient.connect(device_id, user, password, willTopicName, willTopicQos, willTopicRetain, willTopicMessage)) {
-      Serial.println("Connected");
+      publishMQTTMessage(writeToTopic);
+      Serial.println("MQTT Connected!");
     } else {
       Serial.println("Failed to connect to MQTT server");
     }
   }
 }
+void publishMQTTMessage(char* topic, char* message) {
+  if (mqttClient.publish(topic, message)) {
+    Serial.print(topic); Serial.println((" sent!"));
+  } else {
+    Serial.print(topic); Serial.println((" not completed!"));
+  }
+  Serial.flush();
+}
 
 void publishMQTTMessage(char* topic) {
-  mqttClient.publish(topic, String(device_id).concat(" says \"Hello world\""));
-  Serial.print(topic); Serial.println((" sent!"));
+  if (mqttClient.publish(topic, "ACG says \"Hello world\"")) {
+    Serial.print(topic); Serial.println((" sent!"));
+  } else {
+    Serial.print(topic); Serial.println((" not completed!"));
+  }
   Serial.flush();
 }
 
 void subscribeToMQTTTopic(char* topic) {
-  mqttClient.subscribe(topic);
-  Serial.print(topic); Serial.println((" subscribed!"));
+  if (mqttClient.subscribe(topic)) {
+    Serial.print(topic); Serial.println((" subscribed!"));
+  } else {
+    Serial.print(topic); Serial.println((" not completed!"));
+  }
   Serial.flush();
+}
+
+char* findParameter(String command) {
+  int firstQuote = command.indexOf("\"");
+  int lastQuote = command.lastIndexOf("\"");
+  String result = command.substring(firstQuote + 1, lastQuote);
+  Serial.print("Message:");Serial.println(result);
+  char msg[result.length()];
+  result.toCharArray(msg, result.length() + 1);
+  return msg;
+}
+
+bool executeCommand(String command) {
+  if (command.length() >= 4) {
+    char radix = command[0];
+    if (radix == 'p') {
+      publishMQTTMessage(writeToTopic, findParameter(command));
+    } else if (radix == 's') {
+      subscribeToMQTTTopic(findParameter(command));
+    } else {
+      Serial.print("Command \"");Serial.print(radix);Serial.println("\" does not exist!");
+      Serial.println("Type \"p\" to publish or \"s\" to subscribe!");
+    }
+  } else {
+    Serial.println("Malformed line!");
+  }
 }
 
 void setup() {
@@ -95,21 +141,15 @@ void loop() {
   if (mqttClient.connected()) {
     turnOnLED(GREEN_LED_PIN);
     if (Serial.available()) {
-      int command = Serial.parseInt();
-      switch (command) {
-        case 1:
-          publishMQTTMessage(writeToTopic);
-          break;
-        default:
-          subscribeToMQTTTopic(readFromTopic);
-      }
-      mqttClient.loop();
+      String command = Serial.readString();
+      executeCommand(command);
     }
+    mqttClient.loop();
   } else {
-    Serial.println("There's no connection, mate. Type \"retry\" and good luck!");
+    Serial.println("There's no connection, mate. Type \"r\" to retry and good luck!");
     turnOffAllLEDs();
     String serialMessage = "";
-    while (serialMessage != "retry") {
+    while (serialMessage != "r") {
       serialMessage = Serial.readString();
     }
     establishConnection();
