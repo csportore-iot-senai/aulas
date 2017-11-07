@@ -1,7 +1,12 @@
-#include <SPI.h>
-#include <UIPEthernet.h>
-//#include <utility/logging.h>
+
+#ifdef ONLINE
 #include <PubSubClient.h>
+#else
+#include <SerialPubSubClient.h>
+#endif
+#include <SPI.h>
+#include <Ethernet.h>
+
 
 //=============================================================//
 //========================= LED ===============================//
@@ -60,6 +65,7 @@ void whenMessageReceived(char* topic, byte* payload, unsigned int length) {
 PubSubClient mqttClient(server, port, whenMessageReceived, ethClient);
 
 void establishConnection() {
+  #ifdef ONLINE
   Serial.print("Attempting DHCP");
   if (Ethernet.begin(mac) == 0) {
     Serial.println("...but it failed miserably");
@@ -75,9 +81,15 @@ void establishConnection() {
       Serial.println("Failed to connect to MQTT server");
     }
   }
-  Serial.flush();
+  #endif
 }
+
+void piscarEnvio(int bytes) {
+  
+}
+
 void publishMQTTMessage(char* topic, char* message) {
+  piscarEnvio(strlen(message));
   if (mqttClient.publish(topic, message)) {
     Serial.print(topic); Serial.println((" sent!"));
   } else {
@@ -109,7 +121,6 @@ char* findParameter(String command) {
   int lastQuote = command.lastIndexOf("\"");
   String result = command.substring(firstQuote + 1, lastQuote);
   Serial.print("Message:");Serial.println(result);
-  Serial.flush();
   char msg[result.length()];
   result.toCharArray(msg, result.length() + 1);
   return msg;
@@ -129,18 +140,20 @@ bool executeCommand(String command) {
   } else {
     Serial.println("Malformed line!");
   }
-  Serial.flush();
 }
 
 void setup() {
   Serial.begin(9600);
   while (!Serial) {}
+  #ifdef ONLINE
   establishConnection();
+  #endif
   pinMode(GREEN_LED_PIN, OUTPUT);
   pinMode(YELLOW_LED_PIN, OUTPUT);
 }
 
 void loop() {
+  #ifdef ONLINE
   if (mqttClient.connected()) {
     turnOnLED(GREEN_LED_PIN);
     if (Serial.available()) {
@@ -157,6 +170,7 @@ void loop() {
     }
     establishConnection();
   }
+  #endif
 }
 
 void turnOnLED(int pin) {

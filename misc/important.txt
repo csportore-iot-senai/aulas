@@ -4,10 +4,8 @@ GitHub Senai
 Slack
 	codexp-senai
 	csportore
-	//MySl4ck//
-GitHub
 	csportore-iot-senai
-	//MyG1tHub//
+
 
 Documentação do Projeto
 	https://docs.google.com/document/d/1JA5yEMUHZJZySKVP2dLOXM2j-9UgPN-7BDDppO4K-Mk/edit?usp=sharing
