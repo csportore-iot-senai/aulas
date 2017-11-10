@@ -60,7 +60,6 @@ void whenMessageReceived(char* topic, byte* payload, unsigned int length) {
   Serial.print("Numero lido: "); Serial.println(msgCode);
   Serial.flush();
   blinkReceivedMsgLED = true;
-  blinkCounter = 0;
 }
 
 PubSubClient mqttClient(server, port, whenMessageReceived, ethClient);
@@ -78,16 +77,20 @@ bool initializeEthernet() {
   }
 }
 void establishMQTTConnection() {
-  // MQTT Connection
-  Serial.println("Connecting to MQTT...");
-  //boolean PubSubClient::connect(const char *id, const char *user, const char *pass, const char* willTopic, uint8_t willQos, boolean willRetain, const char* willMessage)
-  if (mqttClient.connect(device_id, user, password, willTopicName, willTopicQos, willTopicRetain, willTopicMessage)) {
-    publishMQTTMessage(writeToTopic);
-    Serial.println("MQTT Connected!");
-    Serial.flush();
+  if (ethClient.connected()) {
+    // MQTT Connection
+    Serial.println("Connecting to MQTT...");
+    //boolean PubSubClient::connect(const char *id, const char *user, const char *pass, const char* willTopic, uint8_t willQos, boolean willRetain, const char* willMessage)
+    if (mqttClient.connect(device_id, user, password, willTopicName, willTopicQos, willTopicRetain, willTopicMessage)) {
+      publishMQTTMessage(writeToTopic);
+      Serial.println("MQTT Connected!");
+      Serial.flush();
+    } else {
+      Serial.println("Failed to connect to MQTT server");
+      Serial.flush();
+    }
   } else {
-    Serial.println("Failed to connect to MQTT server");
-    Serial.flush();
+    initializeEthernet();
   }
 }
 
@@ -96,7 +99,6 @@ void publishMQTTMessage(char* topic, char* message) {
     Serial.print(topic); Serial.println((" sent!"));
     Serial.flush();
     blinkPublishLED = true;
-    blinkCounter = 0;
   } else {
     Serial.print(topic); Serial.println((" not completed!"));
     Serial.flush();
@@ -161,22 +163,18 @@ bool blinkLED(int ledPin, unsigned long interval) {
   if (currentMillis - previousMillis > interval) {
     if (blinkMaxCount >= blinkCounter) {
       previousMillis = currentMillis;
-      digitalWrite(ledPin, swapPhase(ledPin));
+      swapPhase(ledPin);
       blinkCounter++;
       return true;
     } else {
-      digitalWrite(ledPin, HIGH);
+      blinkCounter = 0;
       return false;
     }
   }
 }
 
-int swapPhase(int ledPin) {
-  if (digitalRead(ledPin)) {
-    return LOW;
-  } else {
-    return HIGH;
-  }
+void swapPhase(int ledPin) {
+  digitalWrite(ledPin, !digitalRead(ledPin));
 }
 
 void setup() {
@@ -201,6 +199,7 @@ void loop() {
     mqttClient.loop();
   } else {
     Serial.println("There's no connection, mate. Type \"r\" to retry and good luck!");
+    Serial.flush();
     turnOffAllLEDs();
     String serialMessage = "";
     while (serialMessage != "r") {
@@ -208,7 +207,10 @@ void loop() {
     }
     establishMQTTConnection();
   }
-
+  int result = Ethernet.maintain();
+  if (result == 3 || result == 1) {
+    initializeEthernet();
+  }
   if (blinkPublishLED) {
     blinkPublishLED = blinkLED(GREEN_LED_PIN, blinkInterval);
   }
