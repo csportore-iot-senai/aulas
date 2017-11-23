@@ -1,7 +1,28 @@
 
 #include <EEPROM.h>
+#include <Keypad.h>
 
-const byte mask = 0xFF;
+/******************************************
+                  EEPROM
+*******************************************/
+const short passwordMaxDigits = 6;
+
+/******************************************
+                  KEYPAD
+*******************************************/
+boolean isTypingPassword = false;
+boolean isPasswordComplete = false;
+String typedPassword = "";
+const byte ROWS = 4; //four rows
+const byte COLS = 3; //three columns
+char keys[ROWS][COLS] = {
+  {'1', '2', '3'},
+  {'4', '5', '6'},
+  {'7', '8', '9'},
+  {'*', '0', '#'}
+};
+byte rowPins[ROWS] = {5, 4, 3, 2}; //connect to the row pinouts of the keypad
+byte colPins[COLS] = {8, 7, 6}; //connect to the column pinouts of the keypad
 
 void setup() {
   pinMode(13, OUTPUT);
@@ -9,39 +30,53 @@ void setup() {
   while (!Serial) {
     ;
   }
-
+  pinMode(2, INPUT);
 }
-//11110 1100010
+
 void loop() {
-  if (Serial.available()) {
+  char key = keypad.getKey();
+  if (key) {
+    if (key == '*') {
+      Serial.println("Iniciando digitação da senha...");
+      typedPassword = "";
+      isTypingPassword = true;
+      return;
+    } else if (key == '#') {
+      Serial.println("Terminando digitação da senha...");
+      isTypingPassword = false;
+      Serial.print("Senha digitada: "); Serial.println(typedPassword);
+      typedPassword = "";
+      isPasswordComplete = true;
+    }
+    if (isTypingPassword) {
+      typedPassword += key;
+    }
+    Serial.println(key);
+  }
 
+  if (isPasswordComplete) {
     digitalWrite(13, LOW);
-    String password = Serial.readString();
-    int passwordSize = password.length();
 
-    if (passwordSize == 4) {
+    if (typedPassword.length() == passwordMaxDigits) {
 
       Serial.print("Senha digitada: "); Serial.println(password);
 
       Serial.println("Gravando...");
-      short arraySize = passwordSize + 1;
+      short arraySize = passwordMaxDigits + 1;
       char passwordArray[arraySize];
       password.toCharArray(passwordArray, arraySize);
-      //DEBUG
-      Serial.print("[toCharArray]:"); Serial.println(passwordArray);
+
       char addresses[arraySize];
-      //DEBUG
-      Serial.print("[sizeof$addresses]:"); Serial.println(sizeof(addresses));
-      for (short i = 0; i < sizeof(passwordArray); i++) {
+      for (short i = 0; i < arraySize; i++) {
         byte data = passwordArray[i];
         short address = writeToNextEmptyEEPROMAddress(data);
         addresses[i] = address;
         Serial.print("Endereco: "); Serial.println(address);
       }
 
-      char recoveredPassword[passwordSize];
+      char recoveredPassword[arraySize];
       Serial.println("Lendo...");
-      for (short i = 0; i < sizeof(addresses); i++) {
+      for (short i = 0; i < arraySize; i++) {
         byte recoveredData = EEPROM.read(addresses[i]);
         recoveredPassword[i] = (char) recoveredData;
       }
@@ -68,4 +103,7 @@ short writeToNextEmptyEEPROMAddress(byte data) {
     }
   }
   Serial.println("Nenhum endereco vago!");
+}
+
+void checkPassword() {
 }

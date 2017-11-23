@@ -1,4 +1,3 @@
-#include <SPI.h>
 #include <Keypad.h>
 
 boolean digitandoSenha = false;
