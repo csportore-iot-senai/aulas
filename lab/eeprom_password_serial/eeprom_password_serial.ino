@@ -15,22 +15,27 @@ void setup() {
 void loop() {
   if (Serial.available()) {
     digitalWrite(13, LOW);
-    unsigned int password = Serial.parseInt();
-    if (password <= 9999) {
+    String password = Serial.readString;
+    if (password.length() <= 4) {
+
       Serial.print("Senha digitada: "); Serial.println(password);
 
       Serial.println("Gravando...");
 
-      byte firstByte = password & mask;
-      short firstAddress = writeToNextEmptyEEPROMAddress(firstByte);
-      Serial.print("1)Endereco: "); Serial.println(firstAddress);
+      char passwordArray = password.toCharArray();
 
-      byte secondByte = (password >> 8) & mask;
-      short secondAddress = writeToNextEmptyEEPROMAddress(secondByte);
-      Serial.print("2)Endereco: "); Serial.println(secondAddress);
+      for (short i = 0; sizeof(passwordArray); i++) {
+        byte data = passwordArray[i] & mask;
+        short address = writeToNextEmptyEEPROMAddress(data);
+        Serial.print("1)Endereco: "); Serial.println(address);
 
+        byte secondByte = (password >> 8) & mask;
+        short secondAddress = writeToNextEmptyEEPROMAddress(secondByte);
+        Serial.print("2)Endereco: "); Serial.println(secondAddress);
+        
+      }
+      
       Serial.println("Lendo...");
-
       byte recoveredFirstByte = EEPROM.read(firstAddress);
       byte recoveredSecondByte = EEPROM.read(secondAddress);
       Serial.println(recoveredFirstByte);
@@ -39,13 +44,14 @@ void loop() {
       unsigned short recoveredPassword = (recoveredSecondByte << 8) | recoveredFirstByte;
       // Isso da problema pois a senha 0001 e diferente da 1, entao e preciso receber a senha
       // como String e guardar os bytes de cada parte da String
-      Serial.print("Recuperado:");Serial.println(recoveredPassword);
+      Serial.print("Recuperado:"); Serial.println(recoveredPassword);
+
       digitalWrite(13, HIGH);
     } else {
       Serial.println("Máximo permitido: 9999");
       Serial.println("Tente novamente");
     }
-    
+
   }
 }
 
