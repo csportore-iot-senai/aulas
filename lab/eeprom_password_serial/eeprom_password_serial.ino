@@ -14,41 +14,46 @@ void setup() {
 //11110 1100010
 void loop() {
   if (Serial.available()) {
+
     digitalWrite(13, LOW);
-    String password = Serial.readString;
-    if (password.length() <= 4) {
+    String password = Serial.readString();
+    int passwordSize = password.length();
+
+    if (passwordSize == 4) {
 
       Serial.print("Senha digitada: "); Serial.println(password);
 
       Serial.println("Gravando...");
-
-      char passwordArray = password.toCharArray();
-
-      for (short i = 0; sizeof(passwordArray); i++) {
-        byte data = passwordArray[i] & mask;
+      short arraySize = passwordSize + 1;
+      char passwordArray[arraySize];
+      password.toCharArray(passwordArray, arraySize);
+      //DEBUG
+      Serial.print("[toCharArray]:"); Serial.println(passwordArray);
+      char addresses[arraySize];
+      //DEBUG
+      Serial.print("[sizeof$addresses]:"); Serial.println(sizeof(addresses));
+      for (short i = 0; i < sizeof(passwordArray); i++) {
+        byte data = passwordArray[i];
         short address = writeToNextEmptyEEPROMAddress(data);
-        Serial.print("1)Endereco: "); Serial.println(address);
-
-        byte secondByte = (password >> 8) & mask;
-        short secondAddress = writeToNextEmptyEEPROMAddress(secondByte);
-        Serial.print("2)Endereco: "); Serial.println(secondAddress);
-        
+        addresses[i] = address;
+        Serial.print("Endereco: "); Serial.println(address);
       }
-      
+
+      char recoveredPassword[passwordSize];
       Serial.println("Lendo...");
-      byte recoveredFirstByte = EEPROM.read(firstAddress);
-      byte recoveredSecondByte = EEPROM.read(secondAddress);
-      Serial.println(recoveredFirstByte);
-      Serial.println(recoveredSecondByte);
+      for (short i = 0; i < sizeof(addresses); i++) {
+        byte recoveredData = EEPROM.read(addresses[i]);
+        recoveredPassword[i] = (char) recoveredData;
+      }
 
-      unsigned short recoveredPassword = (recoveredSecondByte << 8) | recoveredFirstByte;
-      // Isso da problema pois a senha 0001 e diferente da 1, entao e preciso receber a senha
-      // como String e guardar os bytes de cada parte da String
       Serial.print("Recuperado:"); Serial.println(recoveredPassword);
-
+      if (String(recoveredPassword) == "1234") {
+        Serial.println("Senha correta!");
+      }
       digitalWrite(13, HIGH);
+
     } else {
-      Serial.println("Máximo permitido: 9999");
+      Serial.println("Maximo permitido: 9999");
       Serial.println("Tente novamente");
     }
 
@@ -62,5 +67,5 @@ short writeToNextEmptyEEPROMAddress(byte data) {
       return i;
     }
   }
-  Serial.println("Nenhum endereço vago!");
+  Serial.println("Nenhum endereco vago!");
 }
